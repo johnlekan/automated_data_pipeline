@@ -1,0 +1,32 @@
+./.venv
+# Python
+__pycache__/
+*.pyc
+
+# DBT
+dbt/*/target/
+dbt/*/logs/
+dbt/*/run/
+dbt/*/manifest.json
+dbt/*/graph_summary.json
+dbt/*/run_results.json
+dbt/*/partial_parse.msgpack
+dbt/*/graph.gpickle
+dbt/*/semantic_manifest.json
+
+# Airflow
+airflow/logs/
+
+# Docker
+*.log
+
+# Environment files
+.env
+.env.*
+
+# VSCode settings
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
