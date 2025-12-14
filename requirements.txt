@@ -1,5 +1,2 @@
 requests
 psycopg2-binary
-
-SUPERSET-LOAD-EXAMPLE
-SUPERSET-LOG-LEVEL
