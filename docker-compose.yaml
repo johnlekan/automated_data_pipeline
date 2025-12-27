@@ -2,17 +2,17 @@ x-superset-user: &superset-user root
 x-superset-volumes: &superset-volumes
   # /app/pythonpath_docker will be appended to the PYTHONPATH in the final container
   - ./docker:/app/docker
-  - ./superset:/app/superset
-  - ./superset-core:/app/superset-core
-  - superset_data:/app/data  # This references a volume
+  # - ./superset:/app/superset
   - ./docker/superset_config.py:/app/pythonpath/superset_config.py
+  # - superset_data:/app/data
+  # - superset_data:/app/data
 
 services:
   db:
     container_name: postgres_container
-    image: postgres:15  
+    image: postgres:15
     ports:
-      - "5432:5432"
+      - "5000:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -22,55 +22,35 @@ services:
       - ./postgres/airflow_init.sql:/docker-entrypoint-initdb.d/airflow_init.sql
       - ./postgres/superset_init.sql:/docker-entrypoint-initdb.d/superset_init.sql
     networks:
-      - my-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      retries: 5
-    restart: always
+      - airflow_network
 
   airflow:
     container_name: airflow_container
     image: apache/airflow:2.7.1
     depends_on:
-      db:
-        condition: service_healthy
+      - db
+    user: "0:0"   # Important for DockerOperator not recommended for production level
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@db:5432/weather_data
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@db:5432/airflow_db
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
     ports:
       - "8000:8080"
     volumes:
       - ./airflow/dags:/opt/airflow/dags
-      - ./api_request:/opt/airflow/api_request
-      - ./var/run/docker.sock:/var/run/docker.sock
+      - ./api-request:/opt/airflow/api-request
+      - /var/run/docker.sock:/var/run/docker.sock   # FIXED
     networks:
-      - my-network
+      - airflow_network
     command: >
       bash -c "airflow db migrate && airflow standalone"
 
-  dbt:
-    container_name: dbt_container
-    image: ghcr.io/dbt-labs/dbt-postgres:1.9.latest
-    volumes:
-      - ./dbt/my_project:/usr/app/dbt
-      - ./dbt:/root/.dbt
-    environment:
-      DBT_PROFILES_DIR: "/root/.dbt"
-    working_dir: /usr/app/dbt
-    depends_on:
-      - db
-    networks:
-      - my-network
-    command: run
-  
   superset-init:
     image: apache/superset:3.0.0-py310
-    container_name: superset_init
     command: ["/app/docker/docker-init.sh"]
     env_file:
-      - path: docker/.env # default
-        required: true
+        - path: docker/.env # default
+          required: true
     depends_on:
       db:
         condition: service_started
@@ -79,24 +59,24 @@ services:
     user: *superset-user
     volumes: *superset-volumes
     environment:
-      SUPERSET_LOAD_EXAMPLES: "${SUPERSET_LOAD_EXAMPLES:-yes}"
+      SUPERSET_LOAD_EXAMPLES: "no"
       SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
-      DATABASE_DB: superset_db
+      DATABASE_DB: "superset"
     healthcheck:
-      disable: true
+        disable: true 
     networks:
-      - my-network
+      - airflow_network
+     
 
   superset:
     env_file:
       - path: docker/.env # default
         required: true
     image: apache/superset:3.0.0-py310
-    container_name: superset_app
     command: ["/app/docker/docker-bootstrap.sh", "app"]
     restart: unless-stopped
     ports:
-      - 8088:8088
+      - ${SUPERSET_PORT:-8088}:8088
     user: *superset-user
     depends_on:
       superset-init:
@@ -104,28 +84,26 @@ services:
     volumes: *superset-volumes
     environment:
       SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
-      DATABASE_DB: superset_db
+      DATABASE_DB: "superset"
     networks:
-      - my-network
-
+     - airflow_network
+  
   redis:
     image: redis:7
-    container_name: superset_cache
     restart: unless-stopped
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis:/data
     networks:
-      - my-network
+      - airflow_network
 
 
 networks:
-  my-network:
+  airflow_network:
     driver: bridge
+    name: airflow_network
 
 volumes:
   redis:
-    external: false
-  superset_data:  # ADD THIS - it was missing
     external: false

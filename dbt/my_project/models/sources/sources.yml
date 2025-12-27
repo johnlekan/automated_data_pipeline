@@ -5,7 +5,7 @@ sources:
     database: weather_data
     schema: dev
     tables:
-      - name: raw_weather
+      - name: weather_data
         columns:
           - name: id
           - name: city

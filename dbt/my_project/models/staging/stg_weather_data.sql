@@ -6,7 +6,7 @@
 
 with source as (
    select *
-    from {{ source('dev', 'raw_weather') }} 
+    from {{ source('dev', 'weather_data') }} 
 ),
 
 duplicate as (
@@ -22,7 +22,6 @@ select
     temperature,
     weather_description,
     wind_speed,
-    humidity,
     time as weather_time_local,
     (inserted_at + (utc_offset || ' hour')::interval) as inserted_at_local
 from duplicate

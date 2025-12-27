@@ -29,7 +29,6 @@ from flask_caching.backends.filesystemcache import FileSystemCache
 
 logger = logging.getLogger()
 
-
 DATABASE_DIALECT = os.getenv("DATABASE_DIALECT")
 DATABASE_USER = os.getenv("DATABASE_USER")
 DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
@@ -43,11 +42,14 @@ EXAMPLES_HOST = os.getenv("EXAMPLES_HOST")
 EXAMPLES_PORT = os.getenv("EXAMPLES_PORT")
 EXAMPLES_DB = os.getenv("EXAMPLES_DB")
 
-print(f'=== Superset Environment Debug ===')
+
+print(f'----Superset Environment Debug ----')
 print(f'DATABASE_DIALECT: {DATABASE_DIALECT}')
 print(f'DATABASE_USER: {DATABASE_USER}')
 print(f'DATABASE_HOST: {DATABASE_HOST}')
 print(f'DATABASE_DB: {DATABASE_DB}')
+
+
 
 # The SQLAlchemy connection string.
 SQLALCHEMY_DATABASE_URI = (

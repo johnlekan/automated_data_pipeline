@@ -2,7 +2,7 @@ my_project:
   outputs:
     dev:
       dbname: weather_data
-      host: postgres
+      host: db
       pass: password
       port: 5432
       schema: dev

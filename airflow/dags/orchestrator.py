@@ -1,47 +1,56 @@
 import sys
+from datetime import datetime, timedelta
+
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount
-from datetime import datetime, timedelta
 
-sys.path.append('/opt/airflow/api-request')
+# Make API module importable
+sys.path.append("/opt/airflow/api-request")
 
-def safe_main_callable():
-    from insert_records import main
-    return main()
+from insert_records import main
 
 default_args = {
-    "description": "Orchestrator DAG for managing workflow",
-    "start_date": datetime(2025, 4, 30),
-
+    "description": "API ingestion + dbt orchestration DAG",
+    "start_date": datetime(2025, 12, 25),
+    "catchup": False,
+    "retries": 1,
+    "retry_delay": timedelta(minutes=5),
 }
 
 with DAG(
-    dag_id = "orchestrator_dag",
-    default_args = default_args,
-    schedule_interval = timedelta(minutes=1),
+    dag_id="api_dbt_orchestrator",
+    default_args=default_args,
+    schedule_interval=timedelta(minutes=1),
+    tags=["api", "dbt", "orchestration"],
 ) as dag:
 
-    # Define your tasks here
-
-    task1 = PythonOperator(
-        task_id='fetch_weather_data',
-        python_callable=safe_main_callable)
-
-    task2 = DockerOperator(
-        task_id='run_dbt_models',  
-        image='ghcr.io/dbt-labs/dbt-postgres:1.9.latest',
-        command = '',
-        working_dir='/usr/app/dbt',
-        mounts=[
-            Mount(source='/home/john/projects/weather-data-project/dbt/my_project', target='/usr/app/dbt', type='bind'),
-            Mount(source='/home/john/projects/weather-data-project/dbt/profiles.yml', target='/root/.dbt/profiles.yml', type='bind'),
-        ],
-        network_mode='weather-data-project_my-network',
-        docker_url='unix://var/run/docker.sock',
-        auto_remove='success',
-
+    ingest_task = PythonOperator(
+        task_id="ingest_data",
+        python_callable=main,
     )
 
-    task1 >> task2
+    dbt_task = DockerOperator(
+        task_id="run_dbt_models",
+        image="ghcr.io/dbt-labs/dbt-postgres:1.9.latest",
+        command="run",
+        working_dir="/usr/app",
+        mounts=[
+            Mount(
+                source="/home/john/projects/automated_data_pipeline/dbt/my_project",
+                target="/usr/app",
+                type="bind",
+            ),
+            Mount(
+                source="/home/john/projects/automated_data_pipeline/dbt/profiles.yml",
+                target="/root/.dbt/profiles.yml",
+                type="bind",
+            ),
+        ],
+        network_mode="airflow_network",
+        docker_url="unix://var/run/docker.sock",
+        auto_remove=True,
+    )
+
+    ingest_task >> dbt_task
