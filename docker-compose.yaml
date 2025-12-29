@@ -29,7 +29,7 @@ services:
     image: apache/airflow:2.7.1
     depends_on:
       - db
-    user: "0:0"   # Important for DockerOperator not recommended for production level
+    user: "0:0"   #run as a root user # Important for DockerOperator not recommended for production level
     environment:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:password@db:5432/airflow_db
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
